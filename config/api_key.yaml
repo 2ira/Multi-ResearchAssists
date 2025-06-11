@@ -1,0 +1,11 @@
+openai:
+  api_key: sk-D3IUWYvD1LkNdjcpAyT7lttrggfA7ah2NuZxgIhTIfKz3JMK
+  base_url: https://api.agicto.cn/v1
+gemini:
+  api_key: ''
+  base_url: ''
+claude:
+  api_key: ''
+  base_url: ''
+huggingface:
+  api_token: hf_xxx
