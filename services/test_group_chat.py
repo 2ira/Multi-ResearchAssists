@@ -16,14 +16,6 @@ from tools.search_tool import get_arxiv_tool
 async def chat():
     # Create the agents.
     arxiv_tool = get_arxiv_tool()
-    # arxiv_tool = FunctionTool(
-    #     func=search_arxiv,
-    #     description=(
-    #         "Search for papers on arXiv. Parameters:\n"
-    #         "- query: Search keywords (required)\n"
-    #     ),
-    #     strict=False
-    # )
     model_client = create_model_client("default_model")
     assistant = AssistantAgent("assistant", model_client=model_client,tools=[arxiv_tool],reflect_on_tool_use=True,model_client_stream=False)
     #assistant = get_paper_retriever(model_client)

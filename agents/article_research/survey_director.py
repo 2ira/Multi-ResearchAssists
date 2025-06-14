@@ -58,6 +58,6 @@ def get_survey_director(model_client=default_model_client):
     
     """,
         reflect_on_tool_use=True,
-        model_client_stream=True,
+        model_client_stream=False,
     )
     return survey_director

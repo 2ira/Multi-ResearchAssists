@@ -32,7 +32,7 @@ class TestSearchTools(unittest.TestCase):
     # 这里的semantic api还没有得到
     @unittest.skipIf(os.getenv("SEMANTIC_SCHOLAR_API_KEY") is None, "Semantic Scholar API key not set")
     def test_semantic_scholar_search(self):
-        results = search_semantic_scholar(self.query, self.max_results, self.year_range)
+        results = search_semantic_scholar(self.query)
         self.assertEqual(results["source"], "Semantic Scholar")
         papers = results["papers"]
         print("Enter semantic scholar...")
@@ -52,7 +52,7 @@ class TestSearchTools(unittest.TestCase):
 
     @unittest.skipIf(os.getenv("SERPER_API_KEY") is None, "Serper API key not set")
     def test_google_scholar_search(self):
-        results = asyncio.run(search_google_scholar(self.query, self.max_results, self.year_range))
+        results = asyncio.run(search_google_scholar(self.query))
         print("Enter serper...")
         print(results)
         self.assertEqual(results["source"], "Google Scholar")

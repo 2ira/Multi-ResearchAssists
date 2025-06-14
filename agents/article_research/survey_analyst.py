@@ -49,6 +49,6 @@ def get_survey_analyst(model_client=default_model_client):
             - 保持批判性思维
             """,
         reflect_on_tool_use=True,
-        model_client_stream=True,
+        model_client_stream=False,
     )
     return survey_analyst

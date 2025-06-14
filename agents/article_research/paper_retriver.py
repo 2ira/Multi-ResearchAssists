@@ -62,6 +62,6 @@ def get_paper_retriever(model_client=default_model_client):
         
         """,
         reflect_on_tool_use=True,
-        model_client_stream=True,
+        model_client_stream=False,
     )
     return paper_retriever
