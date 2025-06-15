@@ -17,3 +17,13 @@ scipy
 matplotlib
 openai
 anthropic
+autogen-ext[docker]
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+scipy
+statsmodels
+plotly
+jupyter

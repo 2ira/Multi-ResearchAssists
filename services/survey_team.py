@@ -3,7 +3,6 @@ from autogen_agentchat.ui import Console
 from autogen_core.models import UserMessage
 from autogen_agentchat.agents import UserProxyAgent
 import asyncio
-from autogen_core import CancellationToken
 from autogen_agentchat.messages import TextMessage
 
 from agents.article_research.survey_director import get_survey_director
@@ -12,7 +11,6 @@ from agents.article_research.paper_summarizer import get_paper_summarizer
 from agents.article_research.survey_analyst import get_survey_analyst
 
 from autogen_agentchat.conditions import TextMentionTermination
-from config_loader import config_loader
 
 
 async def run_survey_workflow(topic: str):
