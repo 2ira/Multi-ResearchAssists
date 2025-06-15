@@ -1,10 +1,9 @@
 default_model:
-    type: openai
-    name: gpt-4o-mini
-    parameters:
-      temperature: 0.7
-      max_tokens: 8000
-
+  type: openai
+  name: gpt-4o-mini
+  parameters:
+    temperature: 0.7
+    max_tokens: 8000
 
 gemini_model:
   type: gemini
@@ -38,19 +37,24 @@ tools:
   - name: arxiv_search
     description: Search papers on arXiv
     parameters:
-      max_results: 20          # default retrieve nums
-      sort_by: "relevance"
+      max_results: 20
+      sort_by: relevance
 
   - name: semantic_scholar
     description: Fetch paper metadata from Semantic Scholar
     parameters:
       limit: 20
-      fields: ["title", "abstract", "authors", "venue", "year"]
+      fields:
+        - title
+        - abstract
+        - authors
+        - venue
+        - year
 
 user_proxy:
-  enable: true                # enable user reply（true/false）
+  enable: true
 
 workflow:
   survey:
-    max_retries: 3            # retrieve max time
-    min_papers: 8            # at least paper nums
+    max_retries: 3
+    min_papers: 8

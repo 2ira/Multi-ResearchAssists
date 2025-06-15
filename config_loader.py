@@ -16,8 +16,35 @@ class ConfigLoader:
     #     self.config = self._load_main_config()
 
     ####### Problem1: solve relative path
-    def __init__(self, config_path: str = "/Users/bytedance/Multiagent/pythonProject/RA/multiagents/config"):
-        self.config_path = config_path
+    def __init__(self, config_path: Optional[str] = None):
+        # 动态获取配置路径，支持Windows和Mac
+        if config_path is None:
+            # 获取当前文件的目录
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # 向上查找config目录
+            self.config_path = os.path.join(current_dir, 'config')
+
+            # 如果当前目录没有config，尝试项目根目录
+            if not os.path.exists(self.config_path):
+                # 假设config_loader.py在项目根目录
+                project_root = current_dir
+                self.config_path = os.path.join(project_root, 'config')
+        else:
+            self.config_path = config_path
+
+        print(f"Config path: {self.config_path}")
+
+        # 确保配置目录存在
+        if not os.path.exists(self.config_path):
+            print(f"Config directory not found: {self.config_path}")
+            # 尝试创建config目录
+            try:
+                os.makedirs(self.config_path, exist_ok=True)
+                print(f"Created config directory: {self.config_path}")
+            except Exception as e:
+                print(f"Failed to create config directory: {e}")
+
+        # 加载配置
         self.api_keys = self._load_api_keys()
         self.config = self._load_main_config()
 
