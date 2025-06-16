@@ -1,5 +1,5 @@
 """
-稳定版基础工作流架构 - 兼容 AutoGen 接口
+稳定版基础工作流架构 - 修复完成流程显示
 """
 
 import asyncio
@@ -71,11 +71,11 @@ class InteractiveUserProxyAgent(UserProxyAgent):
                 logger.info(f"收到用户输入: {user_input}")
 
                 # 检查终止条件
-                if user_input.upper().strip() in ["APPROVE", "END", "FINISH", "EXIT"]:
+                if str(user_input).upper().strip() in ["APPROVE", "END", "FINISH", "EXIT"]:
                     self.workflow_active = False
                     return "用户已批准，工作流结束。APPROVE"  # 明确的终止信号
 
-                return user_input
+                return str(user_input)
 
             except queue.Empty:
                 logger.warning("用户输入超时，继续工作流")
@@ -140,11 +140,14 @@ class InteractiveUserProxyAgent(UserProxyAgent):
     def stop_workflow(self):
         """停止工作流"""
         self.workflow_active = False
-        self.input_queue.put("APPROVE")
+        try:
+            self.input_queue.put("APPROVE")
+        except:
+            pass
 
 
 class BaseWorkflowSession(ABC):
-    """基础工作流会话 - 稳定版本"""
+    """基础工作流会话 - 修复完成流程显示"""
 
     def __init__(self, websocket: WebSocket, session_id: str):
         self.websocket = websocket
@@ -155,6 +158,7 @@ class BaseWorkflowSession(ABC):
         self.is_running = False
         self.workflow_thread = None
         self.termination_condition = None
+        self.workflow_completed = False  # 添加完成标志
 
     @abstractmethod
     async def get_agents(self) -> List:
@@ -208,7 +212,7 @@ class BaseWorkflowSession(ABC):
             self.is_running = True
 
             # 发送开始通知
-            await self.websocket.send_text(json.dumps({
+            await self._safe_send_text(json.dumps({
                 "type": "workflow_started",
                 "content": f"🚀 开始{self.get_workflow_name()}: {task}",
                 "name": "system",
@@ -253,6 +257,14 @@ class BaseWorkflowSession(ABC):
                         logger.info("用户代理停止，结束工作流")
                         break
 
+                    # 检查消息内容是否包含完成信号
+                    content = str(getattr(message, 'content', ''))
+                    if any(term in content for term in ["APPROVE", "用户已批准"]):
+                        logger.info("检测到完成信号，准备结束工作流")
+                        self.workflow_completed = True
+                        break
+
+                # 发送完成消息
                 await self._send_completion_message()
 
             loop.run_until_complete(run_workflow())
@@ -261,12 +273,44 @@ class BaseWorkflowSession(ABC):
 
         except Exception as e:
             logger.exception(f"{self.get_workflow_name()} 执行出错: {e}")
-            loop.run_until_complete(
-                self._send_error_message(f"{self.get_workflow_name()}执行出错: {str(e)}")
-            )
+            try:
+                loop.run_until_complete(
+                    self._send_error_message(f"{self.get_workflow_name()}执行出错: {str(e)}")
+                )
+            except:
+                pass
         finally:
             self.is_running = False
-            loop.close()
+            # 清理异步任务
+            self._cleanup_async_tasks(loop)
+
+    def _cleanup_async_tasks(self, loop):
+        """清理异步任务"""
+        try:
+            # 获取所有待处理的任务
+            pending_tasks = []
+            for task in asyncio.all_tasks(loop):
+                if not task.done():
+                    pending_tasks.append(task)
+                    task.cancel()
+
+            # 等待所有任务完成或取消
+            if pending_tasks:
+                logger.info(f"正在清理 {len(pending_tasks)} 个待处理任务")
+                try:
+                    loop.run_until_complete(
+                        asyncio.gather(*pending_tasks, return_exceptions=True)
+                    )
+                except Exception as e:
+                    logger.error(f"清理任务时出错: {e}")
+
+        except Exception as e:
+            logger.error(f"清理异步任务时出错: {e}")
+        finally:
+            try:
+                loop.close()
+            except Exception as e:
+                logger.error(f"关闭事件循环时出错: {e}")
 
     def _serialize_function_call(self, func_obj):
         """序列化函数调用对象"""
@@ -302,7 +346,7 @@ class BaseWorkflowSession(ABC):
             msg_type = "agent_message"
 
             # 过滤掉空消息和系统调试信息
-            if not content or content.strip() == "":
+            if not content or str(content).strip() == "":
                 return
 
             # 过滤掉包含敏感信息的消息
@@ -314,7 +358,7 @@ class BaseWorkflowSession(ABC):
             if content_str.strip() in ["继续执行下一步", "继续", "请继续"]:
                 return
 
-            await self.websocket.send_text(json.dumps({
+            await self._safe_send_text(json.dumps({
                 "type": msg_type,
                 "content": content,
                 "name": name,
@@ -329,29 +373,60 @@ class BaseWorkflowSession(ABC):
         except Exception as e:
             logger.exception(f"转发消息时出错: {e}")
 
+    async def _safe_send_text(self, message: str):
+        """安全发送WebSocket消息"""
+        try:
+            # 检查WebSocket连接状态
+            if hasattr(self.websocket, 'client_state'):
+                from starlette.websockets import WebSocketState
+                if self.websocket.client_state != WebSocketState.CONNECTED:
+                    logger.warning("WebSocket连接已断开，跳过消息发送")
+                    return False
+
+            await self.websocket.send_text(message)
+            return True
+
+        except WebSocketDisconnect:
+            logger.warning("WebSocket连接已断开")
+            return False
+        except RuntimeError as e:
+            if "websocket.send" in str(e) and "websocket.close" in str(e):
+                logger.warning("WebSocket已关闭，跳过消息发送")
+                return False
+            else:
+                logger.error(f"发送消息时出现运行时错误: {e}")
+                return False
+        except Exception as e:
+            logger.error(f"发送消息时出错: {e}")
+            return False
+
     async def _send_completion_message(self):
         """发送完成消息"""
         try:
-            await self.websocket.send_text(json.dumps({
+            # 发送工作流完成消息
+            await self._safe_send_text(json.dumps({
                 "type": "workflow_completed",
                 "content": f"✅ {self.get_workflow_name()}已完成！感谢您的参与。",
                 "name": "system",
                 "timestamp": datetime.now().isoformat()
             }))
+
+            # 标记为已完成
+            self.workflow_completed = True
+
+            logger.info(f"{self.get_workflow_name()} 完成消息已发送")
+
         except Exception as e:
             logger.error(f"发送完成消息时出错: {e}")
 
     async def _send_error_message(self, error_msg: str):
         """发送错误消息"""
-        try:
-            await self.websocket.send_text(json.dumps({
-                "type": "error",
-                "content": error_msg,
-                "name": "system",
-                "timestamp": datetime.now().isoformat()
-            }))
-        except Exception as e:
-            logger.error(f"发送错误消息时出错: {e}")
+        await self._safe_send_text(json.dumps({
+            "type": "error",
+            "content": error_msg,
+            "name": "system",
+            "timestamp": datetime.now().isoformat()
+        }))
 
     def handle_user_input(self, user_input: str):
         """处理用户输入"""
@@ -359,36 +434,51 @@ class BaseWorkflowSession(ABC):
             self.user_proxy.provide_user_input(user_input)
 
             # 检查是否是终止指令
-            if user_input.upper().strip() in ["APPROVE", "END", "FINISH", "EXIT", "QUIT"]:
+            if str(user_input).upper().strip() in ["APPROVE", "END", "FINISH", "EXIT", "QUIT"]:
                 self.user_proxy.stop_workflow()
+                self.workflow_completed = True  # 立即标记为完成
         else:
             logger.warning("没有可用的用户代理来处理输入")
+
+    def is_workflow_completed(self) -> bool:
+        """检查工作流是否已完成"""
+        return self.workflow_completed
 
     async def cleanup(self):
         """清理会话"""
         try:
             logger.info(f"清理 {self.get_workflow_name()} 会话 {self.session_id}")
             self.is_running = False
+            self.workflow_completed = True
 
             if self.user_proxy:
                 self.user_proxy.stop_workflow()
 
+            # 发送关闭消息
             try:
-                await self.websocket.send_text(json.dumps({
+                await self._safe_send_text(json.dumps({
                     "type": "session_closing",
                     "content": "会话正在关闭",
                     "name": "system",
                     "timestamp": datetime.now().isoformat()
                 }))
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.2)
             except:
                 pass
 
+            # 等待工作流线程结束
             if self.workflow_thread and self.workflow_thread.is_alive():
-                self.workflow_thread.join(timeout=10)
+                logger.info("等待工作流线程结束...")
+                self.workflow_thread.join(timeout=5)
+                if self.workflow_thread.is_alive():
+                    logger.warning("工作流线程未能在5秒内结束")
 
+            # 关闭模型客户端
             if self.model_client:
-                await self.model_client.close()
+                try:
+                    await self.model_client.close()
+                except Exception as e:
+                    logger.error(f"关闭模型客户端时出错: {e}")
 
             logger.info(f"会话 {self.session_id} 清理完成")
 

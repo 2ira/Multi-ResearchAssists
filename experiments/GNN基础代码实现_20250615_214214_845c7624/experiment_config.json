@@ -1,0 +1,22 @@
+{
+  "experiment_id": "845c7624",
+  "experiment_name": "GNN基础代码实现",
+  "created_at": "2025-06-15T21:42:14.600400",
+  "work_dir": "experiments/GNN基础代码实现_20250615_214214_845c7624",
+  "requirements": [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn"
+  ],
+  "status": "initialized",
+  "directories": [
+    "experiments/GNN基础代码实现_20250615_214214_845c7624",
+    "experiments/GNN基础代码实现_20250615_214214_845c7624/code",
+    "experiments/GNN基础代码实现_20250615_214214_845c7624/data",
+    "experiments/GNN基础代码实现_20250615_214214_845c7624/output",
+    "experiments/GNN基础代码实现_20250615_214214_845c7624/plots",
+    "experiments/GNN基础代码实现_20250615_214214_845c7624/reports",
+    "experiments/GNN基础代码实现_20250615_214214_845c7624/models"
+  ]
+}
