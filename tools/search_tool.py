@@ -63,7 +63,7 @@ async def search_arxiv(
         client = arxiv.Client()
         search = arxiv.Search(
             query=query,
-            max_results=5,
+            max_results=10,
             sort_by=arxiv.SortCriterion.Relevance
         )
 
@@ -75,7 +75,6 @@ async def search_arxiv(
                 "authors": [author.name for author in paper.authors],
                 "abstract": paper.summary[:500] + "..." if len(paper.summary) > 500 else paper.summary,  # 限制摘要长度
                 "year": paper.published.year,
-                "citation_count": None,
                 "pdf_url": paper.pdf_url,
                 "source_url": paper.entry_id,
                 "source": "arXiv"
@@ -115,7 +114,7 @@ async def search_semantic_scholar(
         query: str,
 )->dict:
     url = "https://api.semanticscholar.org/graph/v1/paper/search"
-    max_results = 5
+    max_results = 10
     params = {
         "query": query,
         "limit": max_results,

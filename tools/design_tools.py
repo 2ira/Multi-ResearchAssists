@@ -1,6 +1,6 @@
 from autogen_agentchat.agents import AssistantAgent
 
-from agents.article_research.paper_retriver import default_model_client
+from agents.article_research.paper_retriever import default_model_client
 
 
 def get_solution_refiner(model_client=default_model_client):
