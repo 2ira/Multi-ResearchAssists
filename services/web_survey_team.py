@@ -21,9 +21,9 @@ from model_factory import create_model_client
 
 # Import your agent modules
 from agents.article_research.survey_director import get_survey_director
-from agents.article_research.paper_retriver import get_paper_retriever
+from agents.article_research.paper_retriever import get_paper_retriever
 from agents.article_research.paper_summarizer import get_paper_summarizer
-from agents.article_research.survey_analyst import get_survey_analyst
+from agents.article_research.paper_analyzer import get_survey_analyst
 from autogen_agentchat.messages import ChatMessage
 
 # Setup logging

@@ -1,0 +1,20 @@
+文献调研工作流测试报告
+==================================================
+
+研究主题: nlp的最新研究
+完成时间: 2025-07-01T23:13:59.596753
+完成阶段: 3
+测试状态: 成功
+
+=== 阶段1: STRATEGY ===
+时间: 2025-07-01T23:13:59.590336
+内容预览: messages=[TextMessage(source='user', models_usage=None, metadata={}, created_at=datetime.datetime(2025, 7, 1, 15, 13, 59, 585103, tzinfo=datetime.timezone.utc), content='\n            请为研究主题"nlp的最新研究"制定详细的文献调研策略。\n\n            要求：\n            1. 分析研究主题的学术内涵和研究范围\n            2. 构建多层次的检索关键词体系\n    ...
+
+=== 阶段2: RETRIEVAL ===
+时间: 2025-07-01T23:13:59.592852
+内容预览: messages=[TextMessage(source='user', models_usage=None, metadata={}, created_at=datetime.datetime(2025, 7, 1, 15, 13, 59, 590454, tzinfo=datetime.timezone.utc), content='\n            根据SurveyDirector提供的策略，对研究主题"nlp的最新研究"进行系统性文献检索。\n\n            执行要求：\n            1. 使用策略中提供的8个检索查询\n            2. ...
+
+=== 阶段3: ANALYSIS ===
+时间: 2025-07-01T23:13:59.596746
+内容预览: messages=[TextMessage(source='user', models_usage=None, metadata={}, created_at=datetime.datetime(2025, 7, 1, 15, 13, 59, 592928, tzinfo=datetime.timezone.utc), content='\n            对PaperRetriever检索和分批的论文进行深度分析。\n\n            分析要求：\n            1. 按批次接收和处理论文\n            2. 对每篇论文进行全面的学术分析，包括：\n ...
+

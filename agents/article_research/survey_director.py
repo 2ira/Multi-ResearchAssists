@@ -5,10 +5,6 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_core.tools import FunctionTool
 from model_factory import create_model_client
 from tools.search_tool import get_search_google_scholar_tool
-import json
-from typing import Dict, Any, Optional
-from datetime import datetime
-import logging
 
 default_model_client = create_model_client("default_model")
 
@@ -22,6 +18,11 @@ def get_survey_director(model_client=default_model_client):
         model_client=model_client,
         system_message="""
         您是通用学术调研总监，能够为任何学术研究主题制定系统性的文献调研策略。
+        
+        🎯 **严格阶段化执行规则**:
+        - 当前是第1阶段:第一阶段
+        - 这是第一个阶段，您的输出是将会指导Paper Retriever完成论文检索
+        - 在你的完成工作之前，其他智能体不能开始工作
 
         ## 核心职责:
         1. **主题分析**: 深入理解任意研究主题的学术内涵和研究范围
@@ -79,148 +80,146 @@ def get_survey_director(model_client=default_model_client):
     )
     return director
 
-
-
 # 增强版调研总监
-def get_survey_director(model_client=default_model_client):
-    """调研总监 - 负责策略制定和任务协调"""
-
-    search_google_scholar = get_search_google_scholar_tool()
-
-    async def create_research_strategy(
-            research_topic: str,
-            user_requirements: Optional[str] = None,
-            domain_context: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """创建详细的研究策略"""
-        try:
-            strategy = {
-                "research_topic": research_topic,
-                "user_requirements": json.loads(user_requirements) if user_requirements else {},
-                "research_directions": [],
-                "keyword_matrix": {},
-                "timeline": {},
-                "quality_targets": {
-                    "min_papers": 50,
-                    "min_citations": 26,
-                    "min_word_count": 10000
-                },
-                "timestamp": datetime.now().isoformat()
-            }
-
-            # 基于主题生成研究方向
-            if "neural network" in research_topic.lower() or "深度学习" in research_topic:
-                strategy["research_directions"] = [
-                    {
-                        "direction": "Architecture Design",
-                        "keywords": ["neural architecture", "network design", "deep learning models"],
-                        "priority": "high"
-                    },
-                    {
-                        "direction": "Training Methods",
-                        "keywords": ["optimization", "training techniques", "learning algorithms"],
-                        "priority": "high"
-                    },
-                    {
-                        "direction": "Applications",
-                        "keywords": ["applications", "use cases", "practical deployment"],
-                        "priority": "medium"
-                    },
-                    {
-                        "direction": "Performance Analysis",
-                        "keywords": ["evaluation", "benchmarks", "performance metrics"],
-                        "priority": "medium"
-                    }
-                ]
-            else:
-                # 通用研究方向模板
-                strategy["research_directions"] = [
-                    {
-                        "direction": "Theoretical Foundation",
-                        "keywords": [f"{research_topic} theory", f"{research_topic} principles"],
-                        "priority": "high"
-                    },
-                    {
-                        "direction": "Methodological Approaches",
-                        "keywords": [f"{research_topic} methods", f"{research_topic} algorithms"],
-                        "priority": "high"
-                    },
-                    {
-                        "direction": "Practical Applications",
-                        "keywords": [f"{research_topic} applications", f"{research_topic} use cases"],
-                        "priority": "medium"
-                    }
-                ]
-
-            return strategy
-
-        except Exception as e:
-            print(f"创建研究策略失败: {e}")
-            return {"error": str(e), "timestamp": datetime.now().isoformat()}
-
-    strategy_tool = FunctionTool(
-        func=create_research_strategy,
-        description="创建详细的研究策略和关键词矩阵"
-    )
-
-    director = AssistantAgent(
-        name="SurveyDirector",
-        model_client=model_client,
-        tools=[search_google_scholar, strategy_tool],
-        system_message="""
-        您是资深的学术调研总监，负责制定和管理整个文献调研项目。您具备深厚的跨学科研究经验和项目管理能力。
-
-        ## 核心职责:
-        1. **战略规划**: 将研究主题分解为系统性的调研计划
-        2. **任务协调**: 协调各专业智能体高效完成调研任务
-        3. **质量控制**: 确保调研过程的学术严谨性和完整性
-        4. **进度管理**: 监控调研进展并动态调整策略
-
-        ## 调研策略制定:
-        **主题分析与分解**:
-        - 识别核心研究问题和关键概念
-        - 将主题分解为3-5个子研究方向
-        - 分析领域交叉点和新兴趋势
-        - 评估研究范围的合理性和可行性
-
-        **关键词体系构建**:
-        - 构建多层次英文关键词矩阵
-        - 包含核心词、扩展词、同义词、相关词
-        - 针对不同数据库优化查询策略
-        - 支持中英文术语对照和转换
-
-        **检索策略设计**:
-        - 制定阶段性检索计划(基础→深度→前沿)
-        - 确定重点会议期刊和高影响力作者
-        - 设置时间范围和质量过滤标准
-        - 预估检索数量和覆盖范围
-
-        ## 质量目标设定:
-        - 检索文献数量: 50+ 篇高质量论文
-        - 引用文献数量: 26+ 篇核心文献
-        - 报告篇幅: 10,000+ 词的深度分析
-        - 可视化内容: 4+ 个交互式图表
-        - 更新频率: 涵盖最近5年的重要进展
-
-        ## 协调管理职能:
-        **任务分配**: 为各智能体制定具体的工作指令
-        **进度跟踪**: 监控各阶段完成情况和质量标准
-        **结果整合**: 协调各部分内容形成coherent narrative
-        **质量保证**: 确保学术标准和引用规范
-
-        ## 输出要求:
-        - 结构化的调研策略文档(JSON格式)
-        - 详细的任务分配计划
-        - 关键词检索矩阵
-        - 质量评估标准
-        - 时间线和里程碑节点
-
-        请确保调研策略的系统性、可执行性和学术严谨性。
-        """,
-        reflect_on_tool_use=True,
-        model_client_stream=False,
-    )
-    return director
+# def get_survey_director(model_client=default_model_client):
+#     """调研总监 - 负责策略制定和任务协调"""
+#
+#     search_google_scholar = get_search_google_scholar_tool()
+#
+#     async def create_research_strategy(
+#             research_topic: str,
+#             user_requirements: Optional[str] = None,
+#             domain_context: Optional[str] = None
+#     ) -> Dict[str, Any]:
+#         """创建详细的研究策略"""
+#         try:
+#             strategy = {
+#                 "research_topic": research_topic,
+#                 "user_requirements": json.loads(user_requirements) if user_requirements else {},
+#                 "research_directions": [],
+#                 "keyword_matrix": {},
+#                 "timeline": {},
+#                 "quality_targets": {
+#                     "min_papers": 50,
+#                     "min_citations": 26,
+#                     "min_word_count": 10000
+#                 },
+#                 "timestamp": datetime.now().isoformat()
+#             }
+#
+#             # 基于主题生成研究方向
+#             if "neural network" in research_topic.lower() or "深度学习" in research_topic:
+#                 strategy["research_directions"] = [
+#                     {
+#                         "direction": "Architecture Design",
+#                         "keywords": ["neural architecture", "network design", "deep learning models"],
+#                         "priority": "high"
+#                     },
+#                     {
+#                         "direction": "Training Methods",
+#                         "keywords": ["optimization", "training techniques", "learning algorithms"],
+#                         "priority": "high"
+#                     },
+#                     {
+#                         "direction": "Applications",
+#                         "keywords": ["applications", "use cases", "practical deployment"],
+#                         "priority": "medium"
+#                     },
+#                     {
+#                         "direction": "Performance Analysis",
+#                         "keywords": ["evaluation", "benchmarks", "performance metrics"],
+#                         "priority": "medium"
+#                     }
+#                 ]
+#             else:
+#                 # 通用研究方向模板
+#                 strategy["research_directions"] = [
+#                     {
+#                         "direction": "Theoretical Foundation",
+#                         "keywords": [f"{research_topic} theory", f"{research_topic} principles"],
+#                         "priority": "high"
+#                     },
+#                     {
+#                         "direction": "Methodological Approaches",
+#                         "keywords": [f"{research_topic} methods", f"{research_topic} algorithms"],
+#                         "priority": "high"
+#                     },
+#                     {
+#                         "direction": "Practical Applications",
+#                         "keywords": [f"{research_topic} applications", f"{research_topic} use cases"],
+#                         "priority": "medium"
+#                     }
+#                 ]
+#
+#             return strategy
+#
+#         except Exception as e:
+#             print(f"创建研究策略失败: {e}")
+#             return {"error": str(e), "timestamp": datetime.now().isoformat()}
+#
+#     strategy_tool = FunctionTool(
+#         func=create_research_strategy,
+#         description="创建详细的研究策略和关键词矩阵"
+#     )
+#
+#     director = AssistantAgent(
+#         name="SurveyDirector",
+#         model_client=model_client,
+#         tools=[search_google_scholar, strategy_tool],
+#         system_message="""
+#         您是资深的学术调研总监，负责制定和管理整个文献调研项目。您具备深厚的跨学科研究经验和项目管理能力。
+#
+#         ## 核心职责:
+#         1. **战略规划**: 将研究主题分解为系统性的调研计划
+#         2. **任务协调**: 协调各专业智能体高效完成调研任务
+#         3. **质量控制**: 确保调研过程的学术严谨性和完整性
+#         4. **进度管理**: 监控调研进展并动态调整策略
+#
+#         ## 调研策略制定:
+#         **主题分析与分解**:
+#         - 识别核心研究问题和关键概念
+#         - 将主题分解为3-5个子研究方向
+#         - 分析领域交叉点和新兴趋势
+#         - 评估研究范围的合理性和可行性
+#
+#         **关键词体系构建**:
+#         - 构建多层次英文关键词矩阵
+#         - 包含核心词、扩展词、同义词、相关词
+#         - 针对不同数据库优化查询策略
+#         - 支持中英文术语对照和转换
+#
+#         **检索策略设计**:
+#         - 制定阶段性检索计划(基础→深度→前沿)
+#         - 确定重点会议期刊和高影响力作者
+#         - 设置时间范围和质量过滤标准
+#         - 预估检索数量和覆盖范围
+#
+#         ## 质量目标设定:
+#         - 检索文献数量: 50+ 篇高质量论文
+#         - 引用文献数量: 26+ 篇核心文献
+#         - 报告篇幅: 10,000+ 词的深度分析
+#         - 可视化内容: 4+ 个交互式图表
+#         - 更新频率: 涵盖最近5年的重要进展
+#
+#         ## 协调管理职能:
+#         **任务分配**: 为各智能体制定具体的工作指令
+#         **进度跟踪**: 监控各阶段完成情况和质量标准
+#         **结果整合**: 协调各部分内容形成coherent narrative
+#         **质量保证**: 确保学术标准和引用规范
+#
+#         ## 输出要求:
+#         - 结构化的调研策略文档(JSON格式)
+#         - 详细的任务分配计划
+#         - 关键词检索矩阵
+#         - 质量评估标准
+#         - 时间线和里程碑节点
+#
+#         请确保调研策略的系统性、可执行性和学术严谨性。
+#         """,
+#         reflect_on_tool_use=True,
+#         model_client_stream=False,
+#     )
+#     return director
 
 # def get_survey_director(model_client=default_model_client):
 #     # model_client = create_model_client("default_model")
