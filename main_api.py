@@ -113,11 +113,11 @@ async def handle_websocket_survey(websocket: WebSocket):
    - 根据策略检索相关学术论文
    - 筛选高质量文献资源
    
-3. 📝 **单篇摘要阶段** (PaperSummarizer)
+3. 📝 **文献分析阶段** (PaperAnalyst)
    - 逐一分析每篇论文
    - 生成结构化摘要
    
-4. 📊 **综述报告阶段** (SurveyAnalyst)
+4. 📊 **综述报告阶段** (ReportGenerator)
    - 整合所有摘要信息
    - 生成完整综述报告
 
@@ -334,14 +334,14 @@ async def root():
                 },
                 {
                     "stage": 3,
-                    "name": "单篇摘要阶段",
-                    "agent": "PaperSummarizer",
+                    "name": "论文分析阶段",
+                    "agent": "PaperAnalyst",
                     "description": "逐一分析论文，生成结构化摘要"
                 },
                 {
                     "stage": 4,
                     "name": "综述报告阶段",
-                    "agent": "SurveyAnalyst",
+                    "agent": "ReportGenerator",
                     "description": "整合摘要，生成完整综述报告"
                 }
             ]
