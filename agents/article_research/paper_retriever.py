@@ -182,7 +182,7 @@ def get_paper_retriever(model_client=default_model_client):
     """通用文献检索专家 - 适用于任何学术主题的多轮检索"""
 
     search_arxiv = get_arxiv_tool()
-    search_google_scholar = get_search_google_scholar_tool()
+    # search_google_scholar = get_search_google_scholar_tool()
 
     retriever = AssistantAgent(
         name="PaperRetriever",

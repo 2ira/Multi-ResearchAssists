@@ -16,6 +16,10 @@ from enum import Enum
 
 from fastapi import WebSocket, WebSocketDisconnect
 from autogen_agentchat.agents import UserProxyAgent
+from fastapi import WebSocket, WebSocketDisconnect
+from autogen_agentchat.agents import UserProxyAgent
+from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.conditions import TextMentionTermination, MaxMessageTermination
 from autogen_core import FunctionCall
 from autogen_core.models import FunctionExecutionResult
 
@@ -55,6 +59,7 @@ class StagedUserProxyAgent(UserProxyAgent):
         self.input_queue = queue.Queue()
         self.workflow_active = True
         self.waiting_for_user = False
+        self.current_user_input = None
 
         # 使用标准的 UserProxyAgent 初始化
         super().__init__(
@@ -69,8 +74,13 @@ class StagedUserProxyAgent(UserProxyAgent):
             if self._should_wait_for_stage_approval():
                 return asyncio.run(self._request_stage_approval())
             else:
-                # 正常的阶段执行，返回指导
-                return "请继续执行当前阶段的工作"
+                if self.current_user_input:
+                    user_input = self.current_user_input
+                    self.current_user_input = None
+                    return user_input
+
+                    # 否则继续执行
+                return "继续执行当前阶段的工作"
 
         except Exception as e:
             logger.error(f"获取用户输入时出错: {e}")
