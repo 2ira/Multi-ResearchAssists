@@ -604,7 +604,7 @@ class SurveyWorkflowSession(StagedWorkflowSession):
     from textwrap import dedent
 
     def _extract_response_content(self, response) -> str:
-        """提取当前输出内容（排除历史用户输入）并美化论文展示"""
+        """深度解析并美化autogen响应内容，保留学术格式与结构"""
         try:
             # 提取消息列表
             if hasattr(response, 'messages'):
@@ -614,10 +614,9 @@ class SurveyWorkflowSession(StagedWorkflowSession):
             else:
                 return self._beautify_raw_text(str(response))
 
-            formatted_output = ["# 📋 本次智能体输出内容"]
+            formatted_output = ["# 📋 智能体交互记录"]
             section_divider = "\n" + "="*80 + "\n"
 
-            # 过滤掉用户历史输入，只保留智能体输出
             filtered_messages = [
                 msg for msg in messages
                 if not (msg.type == 'TextMessage' and msg.source == 'user')
@@ -637,6 +636,7 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                 elif msg.type == 'ToolCallRequestEvent':
                     tool_details = []
                     for call in msg.content:
+                        # 解析JSON参数并格式化
                         try:
                             args = json.loads(call.arguments)
                             args_str = json.dumps(args, indent=2, ensure_ascii=False)
@@ -654,32 +654,27 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                         f"{''.join(tool_details)}"
                     )
 
-                # 处理工具执行结果（论文展示美化核心）
+                # 处理工具执行结果（学术数据美化）
                 elif msg.type == 'ToolCallExecutionEvent':
                     result_details = []
                     for result in msg.content:
+                        # 识别论文数据并结构化展示
                         if result.name == 'search_arxiv' and 'papers' in result.content:
                             try:
-                                paper_data = eval(result.content)
+                                paper_data = eval(result.content)  # 处理学术数据
                                 if 'papers' in paper_data and paper_data['papers']:
-                                    # 论文表格标题
-                                    paper_table = [
-                                        "| 序号 | 论文标题 | 作者 | 年份 | 链接 |",
-                                        "|------|----------|------|------|------|",
-                                    ]
-                                    # 填充表格内容
-                                    for i, paper in enumerate(paper_data['papers'][:5], 1):
-                                        title = paper['title'][:60] + "..." if len(paper['title']) > 60 else paper['title']
-                                        authors = ", ".join(paper['authors'])[:40] + "..." if len(", ".join(paper['authors'])) > 40 else ", ".join(paper['authors'])
-                                        year = paper.get('year', '未知')
-                                        url = f"[链接]({paper['pdf_url']})"
-                                        paper_table.append(f"| {i} | {title} | {authors} | {year} | {url} |")
-                                    # 添加表格和补充信息
+                                    paper_list = []
+                                    for i, paper in enumerate(paper_data['papers'][:5], 1):  # 展示前5篇
+                                        paper_list.append(
+                                            f"{i}. **{paper['title']}**\n"
+                                            f"   作者: {', '.join(paper['authors'])}\n"
+                                            f"   年份: {paper.get('year', '未知')}\n"
+                                            f"   链接: {paper['pdf_url']}"
+                                        )
                                     result_str = (
                                             f"📊 检索来源: {paper_data.get('source', '未知')}\n"
-                                            f"📑 论文总数: {paper_data.get('total_count', 0)}（展示前5篇）\n"
-                                            "|------|----------|------|------|------|\n" +
-                                            "\n".join(paper_table) +
+                                            f"📑 论文总数: {paper_data.get('total_count', 0)}\n"
+                                            f"精选论文:\n" + "\n".join(paper_list) +
                                             (f"\n... 共{len(paper_data['papers'])}篇" if len(paper_data['papers'])>5 else "")
                                     )
                                 else:
@@ -687,8 +682,8 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                             except:
                                 result_str = "📌 检索结果: 解析论文数据失败"
                         else:
-                            # 非论文结果处理
-                            result_str = self._beautify_raw_text(result.content[:800])
+                            # 通用结果处理
+                            result_str = self._beautify_raw_text(result.content[:800])  # 限制长度
                             if len(result.content) > 800:
                                 result_str += "\n...（内容已截断）"
 
@@ -712,8 +707,8 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                         f"{self._process_text_content(msg.content)}"
                     )
 
-            # 提取资源使用统计（只保留当前智能体）
-            usage_stats = self._extract_usage_stats(filtered_messages)
+            # 添加资源使用统计（底部汇总）
+            usage_stats = self._extract_usage_stats(messages)
             if usage_stats:
                 formatted_output.append(
                     f"{section_divider}"
@@ -728,61 +723,49 @@ class SurveyWorkflowSession(StagedWorkflowSession):
             return f"❌ 解析错误: {str(e)}\n\n原始内容:\n{self._beautify_raw_text(str(response))}"
 
     def _process_text_content(self, content: str) -> str:
-        """处理文本内容，重点优化论文批次展示"""
+        """处理文本内容中的学术格式（Markdown、代码块等）"""
         if not content:
             return "无内容"
 
-        # 美化代码块内的论文列表（转为表格）
-        if "```" in content:
-            parts = content.split("```")
-            for i in range(1, len(parts), 2):  # 处理代码块部分
-                if "论文" in parts[i] and "title" in parts[i] and "authors" in parts[i]:
-                    # 识别论文JSON列表并转为表格
-                    try:
-                        # 提取论文条目
-                        paper_lines = [line.strip() for line in parts[i].splitlines() if "title" in line]
-                        paper_table = [
-                            "| 序号 | 论文标题 | 作者 | 链接 |",
-                            "|------|----------|------|------|",
-                        ]
-                        for idx, line in enumerate(paper_lines[:10], 1):  # 最多展示10篇
-                            # 解析JSON片段
-                            line = line.rstrip(',').replace("'", '"')
-                            paper = json.loads(line)
-                            title = paper['title'][:50] + "..." if len(paper['title']) > 50 else paper['title']
-                            authors = ", ".join(paper['authors'])[:30] + "..." if len(", ".join(paper['authors'])) > 30 else ", ".join(paper['authors'])
-                            url = f"[链接]({paper['pdf_url']})"
-                            paper_table.append(f"| {idx} | {title} | {authors} | {url} |")
-                        # 替换原代码块为表格
-                        parts[i] = "\n".join(paper_table) + (f"\n... 共{len(paper_lines)}篇" if len(paper_lines)>10 else "")
-                    except:
-                        pass  # 解析失败则保留原格式
-            content = "```".join(parts)
+        # 美化代码块
+        content = content.replace("```\n", "```\n\n").replace("\n```", "\n\n```")
 
-        # 处理标题和列表
-        content = content.replace("# ", "## ").replace("## ", "### ")  # 调整标题层级
-        content = content.replace("• ", "  - ").replace("1. ", "  1. ")  # 优化列表缩进
-        return content.strip()
+        # 处理学术报告结构（标题层级）
+        for i in range(5, 0, -1):
+            content = content.replace(f"{'#'*i} ", f"\n{'#'*i} ").replace(f"{'#'*i}\n", f"{'#'*i} ")
+
+        # 处理列表项
+        content = content.replace("- ", "• ").replace("1. ", "1️⃣ ").replace("2. ", "2️⃣ ")
+
+        # 移除多余空行
+        lines = [line.strip() for line in content.splitlines() if line.strip()]
+        return dedent("\n".join(lines))
 
     def _beautify_raw_text(self, text: str) -> str:
-        """美化原始文本"""
+        """美化原始文本，提升可读性"""
         if len(text) > 1000:
             return text[:1000] + "\n...（内容过长，已截断）"
-        return text.strip()
+
+        # 尝试格式化JSON内容
+        try:
+            json_data = json.loads(text)
+            return json.dumps(json_data, indent=2, ensure_ascii=False)
+        except:
+            pass
+
+        # 普通文本处理
+        return dedent(text).strip()
 
     def _extract_usage_stats(self, messages) -> str:
-        """提取当前智能体的资源使用统计"""
+        """提取并格式化资源使用统计"""
         usage = []
-        seen_sources = set()
-        for msg in reversed(messages):  # 只保留每个智能体最新的统计
-            if hasattr(msg, 'models_usage') and msg.models_usage and msg.source not in seen_sources:
-                seen_sources.add(msg.source)
-                usage.insert(0,  # 保持顺序
-                             f"• {msg.source}: "
-                             f"提示词 tokens: {msg.models_usage.prompt_tokens:,}, "
-                             f"生成 tokens: {msg.models_usage.completion_tokens:,}, "
-                             f"总计: {msg.models_usage.prompt_tokens + msg.models_usage.completion_tokens:,}"
-                             )
+        for msg in messages:
+            if hasattr(msg, 'models_usage') and msg.models_usage:
+                usage.append(
+                    f"• {msg.source}: "
+                    f"提示词 tokens: {msg.models_usage.prompt_tokens:,}, "
+                    f"生成 tokens: {msg.models_usage.completion_tokens:,}, "
+                    f"总计: {msg.models_usage.prompt_tokens + msg.models_usage.completion_tokens:,}"
+                )
         return "\n".join(usage) if usage else ""
-
 
