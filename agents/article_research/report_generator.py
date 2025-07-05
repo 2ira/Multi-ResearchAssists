@@ -1,6 +1,7 @@
 from autogen_agentchat.agents import AssistantAgent
 from autogen_core.tools import FunctionTool
 from model_factory import create_model_client
+from tools.search_tool import get_search_google_scholar_tool, get_arxiv_tool
 from typing import Dict, Any
 from datetime import datetime
 import json
@@ -11,280 +12,338 @@ default_model_client = create_model_client("default_model")
 def get_report_generator(model_client=default_model_client):
     """高效报告生成专家 - 生成学术标准综述"""
 
-    async def generate_academic_survey(
-            synthesis_data: str,
-            analysis_data: str,
-            topic: str = "Research Survey",
-            target_words: int = 6000
-    ) -> Dict[str, Any]:
-        """生成6000-8000词学术综述"""
-        try:
-            # 基础统计
-            paper_count = analysis_data.count("论文") if analysis_data else 25
-            current_date = datetime.now().strftime('%B %Y')
-
-            # 生成简洁的学术综述
-            academic_content = f"""
-# {topic}: A Comprehensive Survey
-
-## Abstract
-
-**Background**: {topic} has emerged as a critical research domain with significant theoretical and practical implications. Recent advances have demonstrated substantial progress in both methodological development and real-world applications.
-
-**Objective**: This survey systematically reviews recent developments in {topic}, analyzing {paper_count} high-quality papers published between 2020-2024 to identify key trends, challenges, and future directions.
-
-**Methods**: We conducted a comprehensive literature review using systematic search strategies across major academic databases. Papers were selected based on novelty, impact, and relevance to current research priorities.
-
-**Results**: Our analysis reveals significant performance improvements (15-40% over baselines), emerging methodological trends toward efficiency and robustness, and expanding application domains. Key challenges include scalability, generalization, and real-world deployment considerations.
-
-**Conclusions**: The field shows strong momentum with clear technical trajectories. We identify promising research directions and provide recommendations for addressing current limitations.
-
-**Keywords**: {topic.lower()}, systematic review, performance analysis, future directions
-
----
-
-## 1. Introduction
-
-The rapid evolution of {topic.lower()} has transformed both academic research and practical applications over the past decade. With increasing computational capabilities and data availability, the field has witnessed unprecedented advances in both theoretical foundations and practical implementations.
-
-### 1.1 Motivation and Scope
-
-This comprehensive survey addresses the need for systematic analysis of recent developments in {topic.lower()}. We examine {paper_count} carefully selected papers published between 2020-2024, focusing on:
-
-- **Methodological innovations** and algorithmic advances
-- **Performance improvements** and efficiency gains  
-- **Practical applications** and real-world deployments
-- **Current challenges** and future research directions
-
-### 1.2 Survey Methodology
-
-Our systematic review follows established protocols for academic literature analysis:
-
-1. **Search Strategy**: Multi-database search using carefully designed queries
-2. **Selection Criteria**: High-impact papers from top-tier venues (h-index > 50)
-3. **Quality Assessment**: Rigorous evaluation of technical contribution and experimental validation
-4. **Analysis Framework**: Structured extraction of key technical and empirical findings
-
----
-
-## 2. Background and Related Work
-
-### 2.1 Historical Development
-
-The theoretical foundations of {topic.lower()} trace back several decades, with recent years marking a period of accelerated innovation. Early work established fundamental principles, while current research focuses on scalability, efficiency, and practical deployment.
-
-### 2.2 Previous Surveys
-
-While several domain-specific reviews exist, this survey provides the first comprehensive analysis of recent developments across the entire {topic.lower()} landscape, with particular emphasis on post-2020 innovations.
-
----
-
-## 3. Technical Taxonomy and Classification
-
-### 3.1 Methodological Categories
-
-Based on our analysis, current research can be classified into four primary categories:
-
-**Traditional Approaches**: Well-established methods with strong theoretical foundations, typically offering interpretability and computational efficiency.
-
-**Deep Learning Methods**: Neural network-based approaches achieving state-of-the-art performance through sophisticated architectures and large-scale training.
-
-**Hybrid Techniques**: Methods combining multiple paradigms to leverage complementary strengths and mitigate individual limitations.
-
-**Novel Paradigms**: Emerging approaches introducing fundamentally new concepts and problem formulations.
-
-### 3.2 Application Domains
-
-Research applications span multiple domains:
-
-- **Core Applications**: Traditional problem domains with well-defined evaluation protocols
-- **Emerging Applications**: New use cases enabled by recent technological advances
-- **Cross-Domain Applications**: Interdisciplinary applications requiring domain adaptation
-- **Industrial Applications**: Large-scale deployments with practical constraints
-
----
-
-## 4. Performance Analysis and Trends
-
-### 4.1 Quantitative Performance Improvements
-
-Our analysis reveals consistent performance improvements across methodological categories:
-
-- **Traditional Methods**: 5-15% improvement over earlier baselines
-- **Deep Learning**: 20-35% gains with architectural innovations
-- **Hybrid Approaches**: 25-40% improvement through method integration
-- **Novel Paradigms**: Variable performance with high potential
-
-### 4.2 Efficiency and Scalability Trends
-
-Recent research increasingly emphasizes computational efficiency:
-
-- **Algorithmic Optimization**: Reduced computational complexity through algorithmic innovations
-- **Hardware Acceleration**: Leveraging specialized hardware for performance gains
-- **Distributed Processing**: Scalable approaches for large-scale applications
-- **Resource Efficiency**: Methods optimized for resource-constrained environments
-
----
-
-## 5. Current Challenges and Limitations
-
-### 5.1 Technical Challenges
-
-Despite significant progress, several challenges persist:
-
-**Scalability**: Many methods struggle with extremely large datasets or real-time processing requirements.
-
-**Robustness**: Brittleness to distribution shifts and adversarial conditions limits practical deployment.
-
-**Interpretability**: Trade-offs between performance and explainability remain problematic for critical applications.
-
-### 5.2 Methodological Limitations
-
-**Evaluation Gaps**: Standard benchmarks may not reflect real-world complexity and variability.
-
-**Reproducibility**: Inconsistent reporting and implementation differences hinder progress assessment.
-
-**Generalization**: Methods often fail to maintain performance across diverse conditions and domains.
-
----
-
-## 6. Applications and Impact
-
-### 6.1 Established Applications
-
-Traditional domains continue benefiting from recent advances:
-
-- **Healthcare**: Clinical-grade performance in diagnostic and therapeutic applications
-- **Industry**: Substantial ROI through automation and optimization
-- **Scientific Computing**: Accelerated research in physics, chemistry, and biology
-
-### 6.2 Emerging Applications
-
-New domains are leveraging recent capabilities:
-
-- **Creative Industries**: Content generation and design optimization
-- **Environmental Science**: Climate modeling and sustainability applications  
-- **Social Sciences**: Large-scale behavioral analysis and prediction
-
----
-
-## 7. Future Directions and Research Opportunities
-
-### 7.1 Technical Priorities
-
-**Efficiency and Sustainability**: Developing methods with reduced computational and environmental costs while maintaining performance.
-
-**Robustness and Reliability**: Creating systems resilient to data quality issues, distribution shifts, and adversarial conditions.
-
-**Integration and Unification**: Building frameworks that leverage insights from multiple research directions for superior performance.
-
-### 7.2 Emerging Research Areas
-
-**Interdisciplinary Applications**: Collaborations with domain experts may lead to breakthrough discoveries and novel applications.
-
-**Human-AI Collaboration**: Emphasis on augmenting human capabilities rather than pure automation.
-
-**Ethical and Responsible AI**: Addressing bias, fairness, and societal impact considerations.
-
----
-
-## 8. Conclusions and Recommendations
-
-### 8.1 Key Findings
-
-This survey demonstrates clear progress across multiple research dimensions:
-
-- **Performance**: Consistent 15-40% improvements over baseline methods
-- **Diversity**: Healthy methodological diversity with multiple successful approaches  
-- **Applications**: Successful technology transfer from research to practice
-- **Impact**: Demonstrated practical value across diverse domains
-
-### 8.2 Research Recommendations
-
-Based on our analysis, we recommend priority investment in:
-
-1. **Efficiency Research**: Methods achieving high performance with reduced resources
-2. **Robustness Development**: Systems performing consistently across diverse conditions
-3. **Integration Frameworks**: Approaches combining insights from multiple research directions
-4. **Real-world Validation**: Evaluation protocols reflecting practical deployment scenarios
-
-### 8.3 Final Remarks
-
-{topic} stands at an exciting juncture with strong foundations and clear advancement paths. Addressing current limitations while building on recent successes will determine the field's ability to realize its full potential for beneficial impact.
-
----
-
-## References
-
-[1] Smith, J., et al. "Advances in {topic}: A Technical Analysis." *Journal of Advanced Computing*, vol. 15, no. 3, pp. 245-267, 2023.
-
-[2] Johnson, A., et al. "Systematic Approaches to {topic} Research." *Proceedings of ICML*, pp. 1123-1138, 2024.
-
-[3] Brown, R., et al. "Foundational Principles in {topic}." *Nature Machine Intelligence*, vol. 1, no. 4, pp. 189-203, 2022.
-
-[4] Davis, K., et al. "Recent Breakthroughs and Applications." *Science*, vol. 378, no. 6621, pp. 892-897, 2023.
-
-[5] Wilson, T., et al. "Performance Analysis and Benchmarking." *IEEE TPAMI*, vol. 45, no. 12, pp. 3421-3436, 2024.
-
-[Additional references would continue based on actual analyzed papers...]
-
----
-
-**Survey Statistics**: {target_words:,} words | {paper_count} papers analyzed | Generated {current_date}
-            """
-
-            return {
-                "survey_type": "academic_survey",
-                "generation_timestamp": datetime.now().isoformat(),
-                "word_count": target_words,
-                "paper_count": paper_count,
-                "content": academic_content.strip(),
-                "sections": ["Abstract", "Introduction", "Background", "Taxonomy", "Performance",
-                             "Challenges", "Applications", "Future", "Conclusions"],
-                "status": "completed"
-            }
-
-        except Exception as e:
-            return {"error": str(e), "timestamp": datetime.now().isoformat()}
-
-    report_tool = FunctionTool(
-        func=generate_academic_survey,
-        description="生成学术标准的综述报告"
-    )
+#     async def generate_academic_survey(
+#             synthesis_data: str,
+#             analysis_data: str,
+#             topic: str = "Research Survey",
+#             target_words: int = 6000
+#     ) -> Dict[str, Any]:
+#         """生成6000-8000词学术综述"""
+#         try:
+#             # 基础统计
+#             paper_count = analysis_data.count("论文") if analysis_data else 25
+#             current_date = datetime.now().strftime('%B %Y')
+#
+#             # 生成简洁的学术综述
+#             academic_content = f"""
+# # {topic}: A Comprehensive Survey
+#
+# ## Abstract
+#
+# **Background**: {topic} has emerged as a critical research domain with significant theoretical and practical implications. Recent advances have demonstrated substantial progress in both methodological development and real-world applications.
+#
+# **Objective**: This survey systematically reviews recent developments in {topic}, analyzing {paper_count} high-quality papers published between 2020-2024 to identify key trends, challenges, and future directions.
+#
+# **Methods**: We conducted a comprehensive literature review using systematic search strategies across major academic databases. Papers were selected based on novelty, impact, and relevance to current research priorities.
+#
+# **Results**: Our analysis reveals significant performance improvements (15-40% over baselines), emerging methodological trends toward efficiency and robustness, and expanding application domains. Key challenges include scalability, generalization, and real-world deployment considerations.
+#
+# **Conclusions**: The field shows strong momentum with clear technical trajectories. We identify promising research directions and provide recommendations for addressing current limitations.
+#
+# **Keywords**: {topic.lower()}, systematic review, performance analysis, future directions
+#
+# ---
+#
+# ## 1. Introduction
+#
+# The rapid evolution of {topic.lower()} has transformed both academic research and practical applications over the past decade. With increasing computational capabilities and data availability, the field has witnessed unprecedented advances in both theoretical foundations and practical implementations.
+#
+# ### 1.1 Motivation and Scope
+#
+# This comprehensive survey addresses the need for systematic analysis of recent developments in {topic.lower()}. We examine {paper_count} carefully selected papers published between 2020-2024, focusing on:
+#
+# - **Methodological innovations** and algorithmic advances
+# - **Performance improvements** and efficiency gains
+# - **Practical applications** and real-world deployments
+# - **Current challenges** and future research directions
+#
+# ### 1.2 Survey Methodology
+#
+# Our systematic review follows established protocols for academic literature analysis:
+#
+# 1. **Search Strategy**: Multi-database search using carefully designed queries
+# 2. **Selection Criteria**: High-impact papers from top-tier venues (h-index > 50)
+# 3. **Quality Assessment**: Rigorous evaluation of technical contribution and experimental validation
+# 4. **Analysis Framework**: Structured extraction of key technical and empirical findings
+#
+# ---
+#
+# ## 2. Background and Related Work
+#
+# ### 2.1 Historical Development
+#
+# The theoretical foundations of {topic.lower()} trace back several decades, with recent years marking a period of accelerated innovation. Early work established fundamental principles, while current research focuses on scalability, efficiency, and practical deployment.
+#
+# ### 2.2 Previous Surveys
+#
+# While several domain-specific reviews exist, this survey provides the first comprehensive analysis of recent developments across the entire {topic.lower()} landscape, with particular emphasis on post-2020 innovations.
+#
+# ---
+#
+# ## 3. Technical Taxonomy and Classification
+#
+# ### 3.1 Methodological Categories
+#
+# Based on our analysis, current research can be classified into four primary categories:
+#
+# **Traditional Approaches**: Well-established methods with strong theoretical foundations, typically offering interpretability and computational efficiency.
+#
+# **Deep Learning Methods**: Neural network-based approaches achieving state-of-the-art performance through sophisticated architectures and large-scale training.
+#
+# **Hybrid Techniques**: Methods combining multiple paradigms to leverage complementary strengths and mitigate individual limitations.
+#
+# **Novel Paradigms**: Emerging approaches introducing fundamentally new concepts and problem formulations.
+#
+# ### 3.2 Application Domains
+#
+# Research applications span multiple domains:
+#
+# - **Core Applications**: Traditional problem domains with well-defined evaluation protocols
+# - **Emerging Applications**: New use cases enabled by recent technological advances
+# - **Cross-Domain Applications**: Interdisciplinary applications requiring domain adaptation
+# - **Industrial Applications**: Large-scale deployments with practical constraints
+#
+# ---
+#
+# ## 4. Performance Analysis and Trends
+#
+# ### 4.1 Quantitative Performance Improvements
+#
+# Our analysis reveals consistent performance improvements across methodological categories:
+#
+# - **Traditional Methods**: 5-15% improvement over earlier baselines
+# - **Deep Learning**: 20-35% gains with architectural innovations
+# - **Hybrid Approaches**: 25-40% improvement through method integration
+# - **Novel Paradigms**: Variable performance with high potential
+#
+# ### 4.2 Efficiency and Scalability Trends
+#
+# Recent research increasingly emphasizes computational efficiency:
+#
+# - **Algorithmic Optimization**: Reduced computational complexity through algorithmic innovations
+# - **Hardware Acceleration**: Leveraging specialized hardware for performance gains
+# - **Distributed Processing**: Scalable approaches for large-scale applications
+# - **Resource Efficiency**: Methods optimized for resource-constrained environments
+#
+# ---
+#
+# ## 5. Current Challenges and Limitations
+#
+# ### 5.1 Technical Challenges
+#
+# Despite significant progress, several challenges persist:
+#
+# **Scalability**: Many methods struggle with extremely large datasets or real-time processing requirements.
+#
+# **Robustness**: Brittleness to distribution shifts and adversarial conditions limits practical deployment.
+#
+# **Interpretability**: Trade-offs between performance and explainability remain problematic for critical applications.
+#
+# ### 5.2 Methodological Limitations
+#
+# **Evaluation Gaps**: Standard benchmarks may not reflect real-world complexity and variability.
+#
+# **Reproducibility**: Inconsistent reporting and implementation differences hinder progress assessment.
+#
+# **Generalization**: Methods often fail to maintain performance across diverse conditions and domains.
+#
+# ---
+#
+# ## 6. Applications and Impact
+#
+# ### 6.1 Established Applications
+#
+# Traditional domains continue benefiting from recent advances:
+#
+# - **Healthcare**: Clinical-grade performance in diagnostic and therapeutic applications
+# - **Industry**: Substantial ROI through automation and optimization
+# - **Scientific Computing**: Accelerated research in physics, chemistry, and biology
+#
+# ### 6.2 Emerging Applications
+#
+# New domains are leveraging recent capabilities:
+#
+# - **Creative Industries**: Content generation and design optimization
+# - **Environmental Science**: Climate modeling and sustainability applications
+# - **Social Sciences**: Large-scale behavioral analysis and prediction
+#
+# ---
+#
+# ## 7. Future Directions and Research Opportunities
+#
+# ### 7.1 Technical Priorities
+#
+# **Efficiency and Sustainability**: Developing methods with reduced computational and environmental costs while maintaining performance.
+#
+# **Robustness and Reliability**: Creating systems resilient to data quality issues, distribution shifts, and adversarial conditions.
+#
+# **Integration and Unification**: Building frameworks that leverage insights from multiple research directions for superior performance.
+#
+# ### 7.2 Emerging Research Areas
+#
+# **Interdisciplinary Applications**: Collaborations with domain experts may lead to breakthrough discoveries and novel applications.
+#
+# **Human-AI Collaboration**: Emphasis on augmenting human capabilities rather than pure automation.
+#
+# **Ethical and Responsible AI**: Addressing bias, fairness, and societal impact considerations.
+#
+# ---
+#
+# ## 8. Conclusions and Recommendations
+#
+# ### 8.1 Key Findings
+#
+# This survey demonstrates clear progress across multiple research dimensions:
+#
+# - **Performance**: Consistent 15-40% improvements over baseline methods
+# - **Diversity**: Healthy methodological diversity with multiple successful approaches
+# - **Applications**: Successful technology transfer from research to practice
+# - **Impact**: Demonstrated practical value across diverse domains
+#
+# ### 8.2 Research Recommendations
+#
+# Based on our analysis, we recommend priority investment in:
+#
+# 1. **Efficiency Research**: Methods achieving high performance with reduced resources
+# 2. **Robustness Development**: Systems performing consistently across diverse conditions
+# 3. **Integration Frameworks**: Approaches combining insights from multiple research directions
+# 4. **Real-world Validation**: Evaluation protocols reflecting practical deployment scenarios
+#
+# ### 8.3 Final Remarks
+#
+# {topic} stands at an exciting juncture with strong foundations and clear advancement paths. Addressing current limitations while building on recent successes will determine the field's ability to realize its full potential for beneficial impact.
+#
+# ---
+#
+# ## References
+#
+# [1] Smith, J., et al. "Advances in {topic}: A Technical Analysis." *Journal of Advanced Computing*, vol. 15, no. 3, pp. 245-267, 2023.
+#
+# [2] Johnson, A., et al. "Systematic Approaches to {topic} Research." *Proceedings of ICML*, pp. 1123-1138, 2024.
+#
+# [3] Brown, R., et al. "Foundational Principles in {topic}." *Nature Machine Intelligence*, vol. 1, no. 4, pp. 189-203, 2022.
+#
+# [4] Davis, K., et al. "Recent Breakthroughs and Applications." *Science*, vol. 378, no. 6621, pp. 892-897, 2023.
+#
+# [5] Wilson, T., et al. "Performance Analysis and Benchmarking." *IEEE TPAMI*, vol. 45, no. 12, pp. 3421-3436, 2024.
+#
+# [Additional references would continue based on actual analyzed papers...]
+#
+# ---
+#
+# **Survey Statistics**: {target_words:,} words | {paper_count} papers analyzed | Generated {current_date}
+#             """
+#
+#             return {
+#                 "survey_type": "academic_survey",
+#                 "generation_timestamp": datetime.now().isoformat(),
+#                 "word_count": target_words,
+#                 "paper_count": paper_count,
+#                 "content": academic_content.strip(),
+#                 "sections": ["Abstract", "Introduction", "Background", "Taxonomy", "Performance",
+#                              "Challenges", "Applications", "Future", "Conclusions"],
+#                 "status": "completed"
+#             }
+#
+#         except Exception as e:
+#             return {"error": str(e), "timestamp": datetime.now().isoformat()}
+
+    # report_tool = FunctionTool(
+    #     func=generate_academic_survey,
+    #     description="生成学术标准的综述报告"
+    # )
+
+    search_arxiv = get_arxiv_tool()
+    search_google=get_search_google_scholar_tool()
 
     generator = AssistantAgent(
         name="ReportGenerator",
         model_client=model_client,
-        tools=[report_tool],
+        tools=[search_arxiv,search_google],
         system_message="""
-你是学术综述写作专家，生成符合期刊标准的综述论文。
+# 角色：中文综述撰写专家
+你负责将知识整合框架转化为高质量中文综述报告
 
-## 任务：
-1. 接收KnowledgeSynthesizer的综合框架
-2. 结合PaperAnalyzer的具体分析
-3. 生成6000-8000词的学术综述
+## 核心任务
+1. 接收KnowledgeSynthesizer的综合框架（含技术谱系/分类矩阵/关键发现）
+2. 整合PaperAnalyzer的论文分析数据
+3. 生成结构化中文综述（12000-15000字）
 
-## 必须调用工具：
-调用generate_academic_survey工具，参数：
-- synthesis_data: 知识综合结果
-- analysis_data: 论文分析结果  
-- topic: 研究主题
-- target_words: 6000-8000
+## 内容要求
+### 1. 结构规范
+[1] 摘要：背景/目的/方法/结论四要素（400-600字）
+[2] 主体：7大核心章节（三级标题体系）
+[3] 结论：3项核心发现+领域展望
+[4] 参考文献：GB/T 7714标准
 
-## 学术标准：
-- 符合期刊论文格式
-- 包含完整的摘要、引言、正文、结论
-- 客观中性的学术语言
-- 适当的文献引用格式
-- 清晰的逻辑结构
+### 2. 数据整合
+- 技术谱系 → 演进脉络（带时间线）
+- 分类矩阵 → 技术体系（表格呈现）
+- 关键发现 → 性能分析（量化指标）
 
-## 输出要求：
-- 立即调用工具生成完整综述
-- 确保内容学术严谨
-- 控制篇幅在8000词内
-- 提供可直接使用的最终稿
+### 3. 引用规范
+- 正文标注[第一作者, 年份]
+- 每项结论有文献支撑
+- 参考文献自动编号
 
-开始生成学术综述！
+### 4. 量化表达
+- 性能指标精确到小数点后1位
+- 增长/下降用+/-百分比
+- 包含数据来源（如[Zhang et al., 2023]）
+
+## 执行流程
+1. 解析知识整合框架
+2. 提取关键数据点：
+   - 技术演进路径
+   - 方法分类矩阵
+   - 性能指标对比
+3. 生成结构化内容：
+    摘要
+    
+    [300-600字概括]
+    
+    1. 引言
+    
+    1.1 研究背景
+    1.2 综述范围
+    
+    2. 技术演进
+    
+    2.1 发展脉络 [含时间线]
+    2.2 关键突破 [引用支撑]
+    
+    3. 分类体系
+    
+    3.1 方法分类 [表格对比]
+    3.2 应用领域
+    
+    4. 性能分析
+    
+    4.1 量化对比 [+/-%数据]
+    4.2 效率演进
+    
+    5. 挑战与局限
+    
+    5.1 技术瓶颈
+    5.2 应用障碍
+    
+    6. 未来方向
+    
+    6.1 优先领域
+    6.2 交叉方向
+    
+    7. 结论
+    
+    7.1 核心发现
+    7.2 领域展望
+
+    8. 参考文献（按正文引用顺序）
+    
+根据综述报告的主题和内容，需要通过search_arxiv,search_google等工具补充检索更多相关内容以及知识补充，
+必须保证报告长度超过8000词。
+
+报告要高质量详尽，最好超过12000词
+立即生成最终报告！
         """,
         reflect_on_tool_use=True,
         model_client_stream=False,

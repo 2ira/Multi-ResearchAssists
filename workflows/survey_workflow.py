@@ -16,6 +16,11 @@ logger = logging.getLogger(__name__)
 class SurveyWorkflowSession(StagedWorkflowSession):
     """5阶段文献调研工作流会话 - 清晰的autogen集成版本"""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 专门用于存储阶段3的多轮历史
+        self.stage3_history = []
+
     def define_workflow_stages(self) -> List[WorkflowStage]:
         """定义5阶段文献调研工作流"""
         return [
@@ -227,18 +232,27 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                 elif stage_index == 2:
                     # 阶段3：论文分析
                     previous_result = self.workflow_stages[1].result or "论文检索已完成"
-                    input_message = f"对检索到的论文进行深度分析：\n\n论文清单：\n{previous_result}，必须严格按照PaperAnalyzer的规定执行和输出"
+
+                    # 添加所有历史分析结果
+                    history_content = ""
+                    if self.stage3_history:
+                        history_content += "\n\n## 历史分析结果汇总:\n" + "\n\n".join(
+                            [f"### 分析轮次 {i+1}:\n{res}" for i, res in enumerate(self.stage3_history)]
+                        )
+
+                    input_message = f"对检索到的论文进行深度分析：\n\n论文清单：\n{previous_result}历史记录{history_content}，必须严格按照PaperAnalyzer的规定执行和输出"
                     print("########## 现在是PaperAnalyzer  #########")
                 elif stage_index == 3:
                     # 阶段4：知识综合
+                    history_content = "\n\n".join(self.stage3_history) if self.stage3_history else "论文分析已完成"
                     previous_result = self.workflow_stages[2].result or "论文分析已完成"
-                    input_message = f"基于论文分析结果进行知识综合：\n\n分析结果：\n{previous_result}"
+                    input_message = f"基于论文分析结果进行知识综合：\n\n分析结果：\n{history_content}"
                     input_message += f"\n\n研究主题：{task}"
                     print("########## 现在是 KnowledgeSynthesizer  #########")
                 elif stage_index == 4:
                     # 阶段5：报告生成
                     synthesis_result = self.workflow_stages[3].result or "知识综合已完成"
-                    analysis_result = self.workflow_stages[2].result or "论文分析已完成"
+                    analysis_result = self.stage3_history
                     input_message = f"生成学术综述报告：\n\n知识综合结果：\n{synthesis_result}\n\n论文分析结果：\n{analysis_result}\n\n研究主题：{task}"
                     print("########## 现在是 ReportGenerator  #########")
 
@@ -248,11 +262,20 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                 # 调用智能体
                 result_content = await self._improved_call_agent(agent, input_message)
 
+                if stage_index == 2:
+                    self.stage3_history.append(result_content)
+
                 return result_content
             else:
                 # 使用备用方案
                 print(".....Use Stage Specific Fallback")
-                return self._get_stage_specific_fallback(stage_index, task, feedback)
+                result_content = self._get_stage_specific_fallback(stage_index, task, feedback)
+
+                # 阶段3特殊处理：保存多轮历史
+                if stage_index == 2:
+                    self.stage3_history.append(result_content)
+
+                return result_content
 
         except Exception as e:
             logger.error(f"阶段 {stage_index} 执行失败: {e}")
@@ -565,35 +588,6 @@ class SurveyWorkflowSession(StagedWorkflowSession):
         try:
             response = await agent.run(task=input_message)
             return self._extract_response_content(response)
-            # 尝试使用model_client
-            # if hasattr(agent, 'model_client') and agent.model_client:
-            #     logger.info("使用 agent.model_client")
-            #     from autogen_core.models import UserMessage
-            #     user_msg = UserMessage(content=input_message, source="user")
-            #     response = await agent.model_client.create([user_msg])
-            #     return self._extract_response_content(response)
-            #
-            # # 尝试使用_model_client
-            # elif hasattr(agent, '_model_client') and agent._model_client:
-            #     logger.info("使用 agent._model_client")
-            #     from autogen_core.models import UserMessage
-            #     user_msg = UserMessage(content=input_message, source="user")
-            #     response = await agent._model_client.create([user_msg])
-            #     return self._extract_response_content(response)
-            #
-            # # 使用默认模型客户端
-            # else:
-            #     logger.info("使用默认模型客户端")
-            #     from model_factory import create_model_client
-            #     from autogen_core.models import UserMessage
-            #
-            #     model_client = create_model_client("default_model")
-            #     system_prompt = getattr(agent, 'system_message', '')
-            #     full_prompt = f"{system_prompt}\n\n用户消息: {input_message}"
-            #
-            #     user_msg = UserMessage(content=full_prompt, source="user")
-            #     response = await model_client.create([user_msg])
-            #     return self._extract_response_content(response)
 
         except Exception as e:
             logger.error(f"智能体调用失败: {e}")
@@ -632,28 +626,6 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                         f"{content}"
                     )
 
-                # 处理工具调用请求（结构化展示）
-                elif msg.type == 'ToolCallRequestEvent':
-                    tool_details = []
-                    for call in msg.content:
-                        # 解析JSON参数并格式化
-                        try:
-                            args = json.loads(call.arguments)
-                            args_str = json.dumps(args, indent=2, ensure_ascii=False)
-                        except:
-                            args_str = call.arguments
-
-                        tool_details.append(
-                            f"### 🔍 工具: {call.name}\n"
-                            f"参数:\n```json\n{args_str}\n```"
-                        )
-
-                    formatted_output.append(
-                        f"{section_divider}"
-                        f"## 🔧 [{msg.source}] 工具调用请求\n"
-                        f"{''.join(tool_details)}"
-                    )
-
                 # 处理工具执行结果（学术数据美化）
                 elif msg.type == 'ToolCallExecutionEvent':
                     result_details = []
@@ -683,9 +655,9 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                                 result_str = "📌 检索结果: 解析论文数据失败"
                         else:
                             # 通用结果处理
-                            result_str = self._beautify_raw_text(result.content[:800])  # 限制长度
-                            if len(result.content) > 800:
-                                result_str += "\n...（内容已截断）"
+                            result_str = self._beautify_raw_text(result.content)  # 限制长度
+                            # if len(result.content) > 800:
+                            #     result_str += "\n...（内容已截断）"
 
                         result_details.append(
                             f"### 📊 工具: {result.name}\n"
@@ -699,13 +671,6 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                         f"{''.join(result_details)}"
                     )
 
-                # 处理工具调用摘要
-                elif msg.type == 'ToolCallSummaryMessage':
-                    formatted_output.append(
-                        f"{section_divider}"
-                        f"## 📌 [{msg.source}] 总结摘要\n"
-                        f"{self._process_text_content(msg.content)}"
-                    )
 
             # 添加资源使用统计（底部汇总）
             usage_stats = self._extract_usage_stats(messages)

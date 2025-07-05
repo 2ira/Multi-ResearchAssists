@@ -40,6 +40,8 @@ class WorkflowStage:
         self.agent_name = agent_name
         self.description = description
         self.status = StageStatus.PENDING
+        self.result = ""
+        self.history = []
         self.result = None
         self.feedback = None
 
