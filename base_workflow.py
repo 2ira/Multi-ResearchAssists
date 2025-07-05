@@ -423,6 +423,8 @@ class StagedWorkflowSession(ABC):
                 logger.info("使用 agent.model_client")
                 from autogen_core.models import UserMessage
                 user_msg = UserMessage(content=input_message, source="user")
+                if hasattr(agent,"name"):
+                    print(".....Agent name is.....",agent.name)
                 response = await agent.model_client.create([user_msg])
                 return self._extract_response_content(response)
 
@@ -431,6 +433,8 @@ class StagedWorkflowSession(ABC):
                 logger.info("使用 agent._model_client")
                 from autogen_core.models import UserMessage
                 user_msg = UserMessage(content=input_message, source="user")
+                if hasattr(agent,"name"):
+                    print(".....Agent name is.....",agent.name)
                 response = await agent._model_client.create([user_msg])
                 return self._extract_response_content(response)
 
@@ -441,6 +445,9 @@ class StagedWorkflowSession(ABC):
                 from autogen_core.models import UserMessage
 
                 model_client = create_model_client("default_model")
+
+                if hasattr(agent,"name"):
+                    print(".....Agent name is.....",agent.name)
 
                 # 构建包含智能体系统消息的完整提示
                 system_prompt = getattr(agent, 'system_message', '')

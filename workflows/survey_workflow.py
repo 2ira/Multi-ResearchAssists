@@ -209,29 +209,35 @@ class SurveyWorkflowSession(StagedWorkflowSession):
             if stage_index < len(self.agents) and self.agents[stage_index]:
                 # 使用真正的智能体
                 agent = self.agents[stage_index]
+                print("......Agent.........",agent)
 
                 # 构建阶段特定的输入消息
                 if stage_index == 0:
                     # 阶段1：策略制定
-                    input_message = f"请为以下研究主题制定详细的文献调研策略：{task}"
+                    input_message = f"请为以下研究主题制定详细的文献调研策略：{task}，并且严格按照SurveyDirector的规定输出"
+                    print("########## 现在是SurveyDirector  #########")
                 elif stage_index == 1:
                     # 阶段2：论文检索
                     previous_result = self.workflow_stages[0].result or "调研策略已制定"
-                    input_message = f"基于调研策略，执行论文检索：\n\n策略信息：\n{previous_result}"
+                    input_message = f"基于调研策略，执行论文检索：\n\n策略信息：\n{previous_result}，必须严格按照PaperRetriever的规定执行和输出"
+                    print("########## 现在是PaperRetriever  #########")
                 elif stage_index == 2:
                     # 阶段3：论文分析
                     previous_result = self.workflow_stages[1].result or "论文检索已完成"
-                    input_message = f"对检索到的论文进行深度分析：\n\n论文清单：\n{previous_result}"
+                    input_message = f"对检索到的论文进行深度分析：\n\n论文清单：\n{previous_result}，必须严格按照PaperAnalyzer的规定执行和输出"
+                    print("########## 现在是PaperAnalyzer  #########")
                 elif stage_index == 3:
                     # 阶段4：知识综合
                     previous_result = self.workflow_stages[2].result or "论文分析已完成"
                     input_message = f"基于论文分析结果进行知识综合：\n\n分析结果：\n{previous_result}"
                     input_message += f"\n\n研究主题：{task}"
+                    print("########## 现在是 KnowledgeSynthesizer  #########")
                 elif stage_index == 4:
                     # 阶段5：报告生成
                     synthesis_result = self.workflow_stages[3].result or "知识综合已完成"
                     analysis_result = self.workflow_stages[2].result or "论文分析已完成"
                     input_message = f"生成学术综述报告：\n\n知识综合结果：\n{synthesis_result}\n\n论文分析结果：\n{analysis_result}\n\n研究主题：{task}"
+                    print("########## 现在是 ReportGenerator  #########")
 
                 if feedback:
                     input_message += f"\n\n用户反馈：{feedback}"
@@ -242,6 +248,7 @@ class SurveyWorkflowSession(StagedWorkflowSession):
                 return result_content
             else:
                 # 使用备用方案
+                print(".....Use Stage Specific Fallback")
                 return self._get_stage_specific_fallback(stage_index, task, feedback)
 
         except Exception as e:
@@ -553,35 +560,37 @@ class SurveyWorkflowSession(StagedWorkflowSession):
     async def _improved_call_agent(self, agent, input_message: str) -> str:
         """改进的智能体调用方式"""
         try:
+            response = await agent.run(task=input_message)
+            return self._extract_response_content(response)
             # 尝试使用model_client
-            if hasattr(agent, 'model_client') and agent.model_client:
-                logger.info("使用 agent.model_client")
-                from autogen_core.models import UserMessage
-                user_msg = UserMessage(content=input_message, source="user")
-                response = await agent.model_client.create([user_msg])
-                return self._extract_response_content(response)
-
-            # 尝试使用_model_client
-            elif hasattr(agent, '_model_client') and agent._model_client:
-                logger.info("使用 agent._model_client")
-                from autogen_core.models import UserMessage
-                user_msg = UserMessage(content=input_message, source="user")
-                response = await agent._model_client.create([user_msg])
-                return self._extract_response_content(response)
-
-            # 使用默认模型客户端
-            else:
-                logger.info("使用默认模型客户端")
-                from model_factory import create_model_client
-                from autogen_core.models import UserMessage
-
-                model_client = create_model_client("default_model")
-                system_prompt = getattr(agent, 'system_message', '')
-                full_prompt = f"{system_prompt}\n\n用户消息: {input_message}"
-
-                user_msg = UserMessage(content=full_prompt, source="user")
-                response = await model_client.create([user_msg])
-                return self._extract_response_content(response)
+            # if hasattr(agent, 'model_client') and agent.model_client:
+            #     logger.info("使用 agent.model_client")
+            #     from autogen_core.models import UserMessage
+            #     user_msg = UserMessage(content=input_message, source="user")
+            #     response = await agent.model_client.create([user_msg])
+            #     return self._extract_response_content(response)
+            #
+            # # 尝试使用_model_client
+            # elif hasattr(agent, '_model_client') and agent._model_client:
+            #     logger.info("使用 agent._model_client")
+            #     from autogen_core.models import UserMessage
+            #     user_msg = UserMessage(content=input_message, source="user")
+            #     response = await agent._model_client.create([user_msg])
+            #     return self._extract_response_content(response)
+            #
+            # # 使用默认模型客户端
+            # else:
+            #     logger.info("使用默认模型客户端")
+            #     from model_factory import create_model_client
+            #     from autogen_core.models import UserMessage
+            #
+            #     model_client = create_model_client("default_model")
+            #     system_prompt = getattr(agent, 'system_message', '')
+            #     full_prompt = f"{system_prompt}\n\n用户消息: {input_message}"
+            #
+            #     user_msg = UserMessage(content=full_prompt, source="user")
+            #     response = await model_client.create([user_msg])
+            #     return self._extract_response_content(response)
 
         except Exception as e:
             logger.error(f"智能体调用失败: {e}")

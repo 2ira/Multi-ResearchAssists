@@ -7,6 +7,8 @@ source .venv/bin/activate
 
 ## 2. pip necessary package
 
+pip install -U "autogen-agentchat" "autogen-ext[openai,azure]"
+
 pip install -U "autogen-agentchat"
 //for openai model
 pip install "autogen-ext[openai]"
