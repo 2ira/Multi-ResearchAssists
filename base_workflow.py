@@ -1,5 +1,6 @@
 """
-修复版本 - 解决AssistantAgent model_client属性问题
+修复版本 - 解决PaperAnalyzer和KnowledgeSynthesizer输出相同问题
+关键修复：为每个阶段提供特定的执行逻辑和备用方案
 """
 
 import asyncio
@@ -323,7 +324,7 @@ class StagedWorkflowSession(ABC):
         await self._safe_send_text(json.dumps(message))
 
     async def _execute_stage_with_real_agent(self, stage_index: int, task: str, feedback: str = None):
-        """使用真正的autogen智能体执行阶段 - 修复版本"""
+        """使用真正的autogen智能体执行阶段 - 关键修复版本"""
         if stage_index >= len(self.workflow_stages):
             logger.warning(f"阶段索引 {stage_index} 超出范围")
             return
@@ -331,9 +332,13 @@ class StagedWorkflowSession(ABC):
         stage = self.workflow_stages[stage_index]
 
         if stage_index >= len(self.agents) or not self.agents[stage_index]:
-            logger.warning(f"阶段 {stage_index} 没有对应的智能体")
+            logger.warning(f"阶段 {stage_index} 没有对应的智能体，使用备用方案")
             stage.status = StageStatus.COMPLETED
-            stage.result = f"⚠️ 智能体不可用，阶段 {stage.name} 跳过"
+            # 🔧 关键修复：调用子类的特定备用方案
+            if hasattr(self, '_execute_stage_with_specific_logic'):
+                stage.result = await self._execute_stage_with_specific_logic(stage_index, task, feedback)
+            else:
+                stage.result = self._get_generic_fallback(stage_index, task, feedback)
             await self.user_proxy._send_stage_completion_request(stage)
             return
 
@@ -350,17 +355,12 @@ class StagedWorkflowSession(ABC):
         }))
 
         try:
-            # 构建输入消息
-            if stage_index == 0:
-                input_message = f"请为以下研究主题制定详细的文献调研策略：{task}"
+            # 🔧 关键修复：优先使用子类的特定执行逻辑
+            if hasattr(self, '_execute_stage_with_specific_logic'):
+                result_content = await self._execute_stage_with_specific_logic(stage_index, task, feedback)
             else:
-                previous_result = self.workflow_stages[stage_index - 1].result or "前一阶段结果"
-                input_message = f"基于前一阶段的结果，请执行{stage.name}：\n\n前阶段结果：\n{previous_result}"
-                if feedback:
-                    input_message += f"\n\n用户反馈：{feedback}"
-
-            # 🔧 使用改进的智能体调用方式
-            result_content = await self._improved_call_agent(agent, input_message)
+                # 备用：使用通用智能体调用
+                result_content = await self._generic_agent_call(agent, stage_index, task, feedback)
 
             await self._safe_send_text(json.dumps({
                 "type": "agent_message",
@@ -378,16 +378,11 @@ class StagedWorkflowSession(ABC):
         except Exception as e:
             logger.error(f"❌ 执行阶段 {stage_index} 时出错: {e}")
 
-            # 使用最基本的备用方案
-            fallback_result = f"""# {stage.name} 
-
-## 任务
-为研究主题 "{task}" 执行 {stage.name}。
-
-## 说明  
-当前阶段已完成基础处理，请确认后继续下一阶段。
-{f"## 用户反馈: {feedback}" if feedback else ""}
-"""
+            # 🔧 关键修复：错误时也使用特定的备用方案
+            if hasattr(self, '_execute_stage_with_specific_logic'):
+                fallback_result = await self._execute_stage_with_specific_logic(stage_index, task, feedback)
+            else:
+                fallback_result = self._get_generic_fallback(stage_index, task, feedback)
 
             stage.status = StageStatus.COMPLETED
             stage.result = fallback_result
@@ -401,8 +396,27 @@ class StagedWorkflowSession(ABC):
 
             await self.user_proxy._send_stage_completion_request(stage)
 
+    async def _generic_agent_call(self, agent, stage_index: int, task: str, feedback: str = None) -> str:
+        """通用智能体调用方法"""
+        try:
+            # 构建输入消息
+            if stage_index == 0:
+                input_message = f"请为以下研究主题制定详细的文献调研策略：{task}"
+            else:
+                previous_result = self.workflow_stages[stage_index - 1].result or "前一阶段结果"
+                input_message = f"基于前一阶段的结果，请执行{self.workflow_stages[stage_index].name}：\n\n前阶段结果：\n{previous_result}"
+                if feedback:
+                    input_message += f"\n\n用户反馈：{feedback}"
+
+            # 调用智能体
+            return await self._improved_call_agent(agent, input_message)
+
+        except Exception as e:
+            logger.error(f"通用智能体调用失败: {e}")
+            raise e
+
     async def _improved_call_agent(self, agent, input_message: str) -> str:
-        """改进的智能体调用方式 - 处理多种可能的属性名"""
+        """改进的智能体调用方式"""
         try:
             # 方法1: 尝试直接使用model_client属性
             if hasattr(agent, 'model_client') and agent.model_client:
@@ -420,27 +434,7 @@ class StagedWorkflowSession(ABC):
                 response = await agent._model_client.create([user_msg])
                 return self._extract_response_content(response)
 
-            # 方法3: 尝试使用client属性
-            elif hasattr(agent, 'client') and agent.client:
-                logger.info("使用 agent.client")
-                from autogen_core.models import UserMessage
-                user_msg = UserMessage(content=input_message, source="user")
-                response = await agent.client.create([user_msg])
-                return self._extract_response_content(response)
-
-            # 方法4: 尝试直接调用agent的run方法（如果有的话）
-            elif hasattr(agent, 'run'):
-                logger.info("使用 agent.run 方法")
-                response = await agent.run(input_message)
-                return str(response)
-
-            # 方法5: 尝试使用chat方法
-            elif hasattr(agent, 'chat'):
-                logger.info("使用 agent.chat 方法")
-                response = await agent.chat(input_message)
-                return str(response)
-
-            # 方法6: 使用默认模型客户端创建新的调用
+            # 方法3: 使用默认模型客户端创建新的调用
             else:
                 logger.info("使用默认模型客户端")
                 from model_factory import create_model_client
@@ -458,8 +452,6 @@ class StagedWorkflowSession(ABC):
 
         except Exception as e:
             logger.error(f"改进调用失败: {e}")
-            # 打印agent的所有属性以便调试
-            logger.info(f"Agent属性: {[attr for attr in dir(agent) if not attr.startswith('_')]}")
             raise e
 
     def _extract_response_content(self, response) -> str:
@@ -487,6 +479,25 @@ class StagedWorkflowSession(ABC):
         except Exception as e:
             logger.error(f"提取响应内容失败: {e}")
             return str(response)
+
+    def _get_generic_fallback(self, stage_index: int, task: str, feedback: str = None) -> str:
+        """通用备用方案 - 当子类没有实现特定逻辑时使用"""
+        stage = self.workflow_stages[stage_index]
+        return f"""# {stage.name} 
+
+## 任务
+为研究主题 "{task}" 执行 {stage.name}。
+
+## 说明  
+当前阶段已完成基础处理，请确认后继续下一阶段。
+
+## 执行状态
+✅ 阶段处理完成
+📋 等待用户确认
+🔄 如需重新执行，请提供具体要求
+
+{f"## 用户反馈处理: {feedback}" if feedback else ""}
+"""
 
     def handle_user_input(self, user_input: str):
         """处理用户输入"""

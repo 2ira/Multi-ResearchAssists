@@ -1,5 +1,5 @@
 """
-7阶段文献调研顺序交互主API服务
+5阶段文献调研顺序交互主API服务
 真正集成autogen智能体的版本
 """
 
@@ -20,7 +20,7 @@ from workflows.survey_workflow import SurveyWorkflowSession
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="7-Stage Literature Survey Pipeline API")
+app = FastAPI(title="5-Stage Literature Survey Pipeline API")
 
 # 添加CORS中间件
 app.add_middleware(
@@ -31,7 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 会话管理 - 专注于7阶段文献调研
+# 会话管理 - 专注于5阶段文献调研
 active_sessions: Dict[str, Any] = {}
 
 # 连接限制配置
@@ -70,13 +70,13 @@ async def check_session_limits() -> bool:
 
 
 async def handle_websocket_survey(websocket: WebSocket):
-    """处理7阶段文献调研WebSocket连接"""
+    """处理5阶段文献调研WebSocket连接"""
     session_id = str(uuid.uuid4())
     session = None
 
     try:
         await websocket.accept()
-        logger.info(f"7阶段文献调研WebSocket连接已接受，会话 {session_id}")
+        logger.info(f"5阶段文献调研WebSocket连接已接受，会话 {session_id}")
 
         # 检查会话限制
         if not await check_session_limits():
@@ -88,29 +88,29 @@ async def handle_websocket_survey(websocket: WebSocket):
             }))
             return
 
-        # 创建并初始化7阶段文献调研会话
+        # 创建并初始化5阶段文献调研会话
         session = SurveyWorkflowSession(websocket, session_id)
         active_sessions[session_id] = session
 
         if not await session.initialize():
             await websocket.send_text(json.dumps({
                 "type": "error",
-                "content": "无法初始化6阶段文献调研会话",
+                "content": "无法初始化5阶段文献调研会话",
                 "name": "system",
                 "timestamp": datetime.now().isoformat()
             }))
             return
 
-        # 发送7阶段文献调研欢迎消息
-        welcome_message = """🔬 欢迎使用7阶段文献调研智能助手！
+        # 发送5阶段文献调研欢迎消息
+        welcome_message = """🔬 欢迎使用5阶段文献调研智能助手！
 
-📋 **7阶段顺序执行流程**:
+📋 **5阶段顺序执行流程**:
 1. 🎯 **调研策略制定** (SurveyDirector)
    - 深度分析研究主题，制定系统化检索策略
    - 构建多层次英文关键词体系
    
 2. 🔍 **论文检索获取** (PaperRetriever)
-   - 多轮系统化检索，获取25-40篇高质量论文
+   - 多轮系统化检索，获取25-30篇高质量论文
    - 智能筛选和分类管理
    
 3. 📊 **深度论文分析** (PaperAnalyzer)
@@ -122,8 +122,8 @@ async def handle_websocket_survey(websocket: WebSocket):
    - 识别技术发展趋势和研究空白
    
 5. 📝 **综述报告生成** (ReportGenerator)
-   - 生成8000-10000词完整学术综述报告
-   - 专业HTML格式，符合期刊标准
+   - 生成6000-8000词完整学术综述报告
+   - 专业学术格式，符合期刊标准
 
 💡 **真正的autogen智能体协作**:
 - 每个阶段都有专门的智能体执行
@@ -158,7 +158,7 @@ async def handle_websocket_survey(websocket: WebSocket):
             except asyncio.TimeoutError:
                 # 检查工作流是否完成
                 if hasattr(session, 'is_workflow_completed') and session.is_workflow_completed():
-                    logger.info(f"检测到7阶段文献调研完成，准备关闭连接，会话 {session_id}")
+                    logger.info(f"检测到5阶段文献调研完成，准备关闭连接，会话 {session_id}")
                     await asyncio.sleep(1)
                     break
                 continue
@@ -196,7 +196,7 @@ async def handle_websocket_survey(websocket: WebSocket):
                 break
 
             if not workflow_started:
-                # 启动7阶段文献调研工作流
+                # 启动5阶段文献调研工作流
                 try:
                     success = await session.start_workflow(content)
                     if success:
@@ -233,7 +233,7 @@ async def handle_websocket_survey(websocket: WebSocket):
 
                         await websocket.send_text(json.dumps({
                             "type": "system_message",
-                            "content": "✅ 正在结束7阶段文献调研...",
+                            "content": "✅ 正在结束5阶段文献调研...",
                             "name": "system",
                             "timestamp": datetime.now().isoformat()
                         }))
@@ -276,9 +276,9 @@ async def handle_websocket_survey(websocket: WebSocket):
                     }))
 
     except WebSocketDisconnect:
-        logger.info(f"7阶段文献调研WebSocket断开连接，会话 {session_id}")
+        logger.info(f"5阶段文献调研WebSocket断开连接，会话 {session_id}")
     except Exception as e:
-        logger.error(f"7阶段文献调研WebSocket错误，会话 {session_id}: {e}")
+        logger.error(f"5阶段文献调研WebSocket错误，会话 {session_id}: {e}")
         try:
             await websocket.send_text(json.dumps({
                 "type": "error",
@@ -298,7 +298,7 @@ async def handle_websocket_survey(websocket: WebSocket):
 
         if session_id in active_sessions:
             del active_sessions[session_id]
-            logger.info(f"7阶段文献调研会话 {session_id} 已从活跃会话中移除")
+            logger.info(f"5阶段文献调研会话 {session_id} 已从活跃会话中移除")
 
         # 关闭WebSocket连接
         try:
@@ -310,7 +310,7 @@ async def handle_websocket_survey(websocket: WebSocket):
 
 @app.websocket("/ws/survey")
 async def websocket_survey_endpoint(websocket: WebSocket):
-    """7阶段文献调研工作流WebSocket端点"""
+    """5阶段文献调研工作流WebSocket端点"""
     await handle_websocket_survey(websocket)
 
 
@@ -318,21 +318,20 @@ async def websocket_survey_endpoint(websocket: WebSocket):
 async def root():
     """根端点"""
     return {
-        "message": "6-Stage Literature Survey Pipeline API is running",
-        "version": "8.0.0",
-        "mode": "6阶段文献调研顺序执行模式",
-        "description": "专注于6阶段文献调研的真正autogen智能体协作助手",
+        "message": "5-Stage Literature Survey Pipeline API is running",
+        "version": "9.0.0",
+        "mode": "5阶段文献调研顺序执行模式",
+        "description": "专注于5阶段文献调研的真正autogen智能体协作助手",
         "features": [
-            "7阶段专业化执行: 策略制定 → 论文检索 → 深度分析 → 知识综合 → 报告生成",
+            "5阶段专业化执行: 策略制定 → 论文检索 → 深度分析 → 知识综合 → 报告生成",
             "真正的autogen智能体协作",
             "每阶段完成后等待用户确认",
             "支持继续/重新生成/自定义调整",
             "智能体协作完成完整文献调研",
-            "可视化进度跟踪和交互式图表",
-            "8000+词专业学术综述报告"
+            "6000-8000词专业学术综述报告"
         ],
         "workflow": {
-            "name": "7阶段文献调研工作流",
+            "name": "5阶段文献调研工作流",
             "endpoint": "/ws/survey",
             "stages": [
                 {
@@ -345,7 +344,7 @@ async def root():
                     "stage": 2,
                     "name": "🔍 论文检索获取",
                     "agent": "PaperRetriever",
-                    "description": "多轮系统化检索，获取25-40篇高质量学术论文"
+                    "description": "多轮系统化检索，获取25-30篇高质量学术论文"
                 },
                 {
                     "stage": 3,
@@ -363,7 +362,7 @@ async def root():
                     "stage": 5,
                     "name": "📝 综述报告生成",
                     "agent": "ReportGenerator",
-                    "description": "生成8000-10000词完整学术综述报告"
+                    "description": "生成6000-8000词完整学术综述报告"
                 }
             ]
         },
@@ -409,7 +408,7 @@ async def health_check():
         "available_slots": MAX_SESSIONS - len(active_sessions),
         "timestamp": datetime.now().isoformat(),
         "autogen_status": "integrated",
-        "workflow_stages": 7
+        "workflow_stages": 5
     }
 
 
@@ -445,10 +444,9 @@ async def list_sessions():
     return {
         "active_sessions": len(sessions_info),
         "sessions": sessions_info,
-        "service_description": "7阶段文献调研顺序执行服务 - 真正的autogen智能体协作",
+        "service_description": "5阶段文献调研顺序执行服务 - 真正的autogen智能体协作",
         "workflow_stages": [
-            "SurveyDirector → PaperRetriever → PaperAnalyzer → KnowledgeSynthesizer",
-            "→ VisualizationSpecialist → ReportGenerator → QualityReviewer"
+            "SurveyDirector → PaperRetriever → PaperAnalyzer → KnowledgeSynthesizer → ReportGenerator"
         ]
     }
 
@@ -469,11 +467,11 @@ async def manual_cleanup():
 async def get_workflow_info():
     """获取工作流详细信息"""
     return {
-        "workflow_name": "7阶段高质量文献调研工作流",
-        "version": "2.0.0",
-        "total_stages": 7,
+        "workflow_name": "5阶段高质量文献调研工作流",
+        "version": "3.0.0",
+        "total_stages": 5,
         "estimated_time": {
-            "total_minutes": "60-90分钟",
+            "total_minutes": "40-60分钟",
             "per_stage": "8-12分钟/阶段"
         },
         "stages_detail": [
@@ -490,7 +488,7 @@ async def get_workflow_info():
                 "stage_number": 2,
                 "name": "🔍 论文检索获取",
                 "agent": "PaperRetriever",
-                "description": "多轮系统化检索，获取25-40篇高质量学术论文",
+                "description": "多轮系统化检索，获取25-30篇高质量学术论文",
                 "inputs": ["检索策略", "关键词体系"],
                 "outputs": ["论文清单", "检索统计", "分类批次"],
                 "estimated_time": "10-12分钟"
@@ -517,12 +515,18 @@ async def get_workflow_info():
                 "stage_number": 5,
                 "name": "📝 综述报告生成",
                 "agent": "ReportGenerator",
-                "description": "生成8000-10000词完整学术综述报告",
-                "inputs": ["所有前期结果", "可视化内容"],
-                "outputs": ["HTML综述报告", "引用系统", "完整文档"],
+                "description": "生成6000-8000词完整学术综述报告",
+                "inputs": ["所有前期结果", "知识综合框架"],
+                "outputs": ["学术综述报告", "引用系统", "完整文档"],
                 "estimated_time": "10-12分钟"
-            },
+            }
         ],
+        "quality_metrics": {
+            "target_paper_count": "25-30篇",
+            "target_word_count": "6000-8000词",
+            "citation_count": "25+篇文献引用",
+            "quality_standard": "学术期刊发表标准"
+        },
         "autogen_features": {
             "real_agent_execution": True,
             "agent_collaboration": True,
@@ -538,16 +542,16 @@ if __name__ == "__main__":
 
     print("🚀 启动5阶段文献调研顺序执行API服务器...")
     print("=" * 80)
-    print("🔬 **专注服务**: 7阶段文献调研智能助手")
+    print("🔬 **专注服务**: 5阶段文献调研智能助手")
     print("📋 **执行模式**: 真正的autogen智能体协作")
-    print("🎯 **工作流程**: 7阶段专业化分工执行")
+    print("🎯 **工作流程**: 5阶段专业化分工执行")
     print("-" * 80)
     print("🔗 WebSocket连接: ws://localhost:8000/ws/survey")
     print("📊 服务状态: http://localhost:8000/health")
     print("📋 会话管理: http://localhost:8000/sessions")
     print("📖 工作流信息: http://localhost:8000/workflow/info")
     print("=" * 80)
-    print("🎯 **7阶段流程**:")
+    print("🎯 **5阶段流程**:")
     print("1. 🎯 调研策略制定 (SurveyDirector)")
     print("2. 🔍 论文检索获取 (PaperRetriever)")
     print("3. 📊 深度论文分析 (PaperAnalyzer)")
@@ -562,7 +566,7 @@ if __name__ == "__main__":
     print("❌ 'QUIT' - 退出会话")
     print("=" * 80)
     print("🌟 **核心优势**: 真正的autogen智能体协作，确保调研质量！")
-    print("🎓 **最终产出**: 8000+词专业学术综述报告")
+    print("🎓 **最终产出**: 6000-8000词专业学术综述报告")
 
     uvicorn.run(
         app,
